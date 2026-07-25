@@ -8,11 +8,12 @@ const read = (name) => fs.readFileSync(path.join(__dirname, '..', name), 'utf8')
 test('uses Simplified Chinese for primary interface copy', () => {
   const html = read('index.html');
   const app = read('app.js');
+  const inspector = read('operator-inspector.js');
 
   assert.match(html, /CANN 算子图谱/);
   assert.match(html, /算子详情/);
   assert.match(html, /依赖关系/);
-  assert.match(app, /未选择算子/);
+  assert.match(inspector, /未选择算子/);
   assert.match(app, /可见算子/);
 });
 
@@ -31,5 +32,6 @@ test('keeps technical identifiers in English', () => {
 
   assert.match(data, /aclnnAdd/);
   assert.match(data, /l0op_call/);
-  assert.match(html, /operator-graph\.svg/);
+  assert.match(html, /operator-matrix\.js/);
+  assert.match(html, /data-center-view="graph"/);
 });

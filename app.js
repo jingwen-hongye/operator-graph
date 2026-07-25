@@ -1,5 +1,12 @@
 const { categories, operators, links } = window.OperatorDemoData;
 const { buildTree, filterTree } = window.OperatorTree;
+const buildInspectorModel = window.OperatorInspectorData.buildInspectorModel;
+const renderInspectorView = window.OperatorInspectorView.renderInspector;
+const renderEmptyInspector = window.OperatorInspectorView.renderEmptyInspector;
+const bindInspectorTabs = window.OperatorInspectorView.bindInspectorTabs;
+const buildMatrixModel = window.OperatorMatrixView.buildMatrixModel;
+const renderMatrix = window.OperatorMatrixView.renderMatrix;
+const bindMatrixSelection = window.OperatorMatrixView.bindMatrixSelection;
 const operatorTree = buildTree(categories, operators);
 
 const operatorProfiles = {
@@ -24,10 +31,18 @@ const state = {
   expanded: new Set(['aclnn', 'math', 'math-list']),
   selected: null,
   query: '',
+  inspectorTab: 'definition',
+  centerView: 'graph',
   transform: { x: 0, y: 0, k: 1 },
 };
 const byId = new Map(operators.map((op) => [op.id, op]));
 const graphSvg = document.querySelector('#operator-graph');
+const graphPanel = document.querySelector('#operator-graph-panel');
+const matrixPanel = document.querySelector('#operator-matrix-panel');
+const matrixRoot = document.querySelector('#operator-matrix');
+const centerViewTitle = document.querySelector('#center-view-title');
+const graphReadout = document.querySelector('#graph-readout');
+const fitGraphButton = document.querySelector('#fit-graph');
 const viewport = document.querySelector('#graph-viewport');
 const linkLayer = document.querySelector('#graph-links');
 const nodeLayer = document.querySelector('#graph-nodes');
@@ -42,6 +57,21 @@ const explorerScrollIndicator = window.ScrollIndicator.mount(explorerScroll);
 const inspectorScrollIndicator = window.ScrollIndicator.mount(inspectorScroll);
 const edgeTableScrollIndicator = window.ScrollIndicator.mount(edgeTableScroll);
 
+bindInspectorTabs(inspector, (tab) => {
+  state.inspectorTab = tab;
+  inspector.scrollTop = 0;
+  renderInspector();
+  requestAnimationFrame(inspectorScrollIndicator.update);
+});
+
+document.querySelectorAll('[data-center-view]').forEach((tab) => {
+  tab.addEventListener('click', () => setCenterView(tab.dataset.centerView));
+});
+
+bindMatrixSelection(matrixRoot, (operatorId) => {
+  selectOperator(operatorId);
+});
+
 function visibleOperators() {
   const query = state.query.trim().toLowerCase();
   return operators.filter((op) => (
@@ -51,8 +81,48 @@ function visibleOperators() {
   ));
 }
 function visibleLinks(visibleIds) { return links.filter(([source, target]) => visibleIds.has(source) && visibleIds.has(target)); }
-function applyTransform() { viewport.setAttribute('transform', `translate(${state.transform.x} ${state.transform.y}) scale(${state.transform.k})`); document.querySelector('#graph-readout').textContent = `缩放 ${(state.transform.k * 100).toFixed(0)}%`; }
-function fitGraph() { const box = graphSvg.getBoundingClientRect(); state.transform = { x: box.width / 2, y: box.height / 2, k: Math.min(box.width / 1160, box.height / 860) }; applyTransform(); }
+function updateCenterHeader() {
+  const matrixActive = state.centerView === 'matrix';
+  centerViewTitle.textContent = matrixActive ? '支持矩阵' : '算子图谱';
+  graphReadout.textContent = matrixActive
+    ? 'Atlas A2 / Ascend A3 / Ascend A5'
+    : `缩放 ${(state.transform.k * 100).toFixed(0)}%`;
+  fitGraphButton.disabled = matrixActive;
+}
+
+function renderMatrixView() {
+  const model = buildMatrixModel(visibleOperators(), buildModelForOperator);
+  matrixRoot.innerHTML = renderMatrix(model, state.selected);
+}
+
+function setCenterView(view) {
+  state.centerView = view === 'matrix' ? 'matrix' : 'graph';
+  document.querySelectorAll('[data-center-view]').forEach((tab) => {
+    const selected = tab.dataset.centerView === state.centerView;
+    tab.classList.toggle('is-selected', selected);
+    tab.setAttribute('aria-selected', String(selected));
+  });
+  graphPanel.hidden = state.centerView !== 'graph';
+  matrixPanel.hidden = state.centerView !== 'matrix';
+  updateCenterHeader();
+  if (state.centerView === 'matrix') renderMatrixView();
+}
+
+function applyTransform() {
+  viewport.setAttribute('transform', `translate(${state.transform.x} ${state.transform.y}) scale(${state.transform.k})`);
+  if (state.centerView === 'graph') updateCenterHeader();
+}
+
+function fitGraph() {
+  if (state.centerView !== 'graph') return;
+  const box = graphSvg.getBoundingClientRect();
+  state.transform = {
+    x: box.width / 2,
+    y: box.height / 2,
+    k: Math.min(box.width / 1160, box.height / 860),
+  };
+  applyTransform();
+}
 function selectOperator(id) {
   const op = byId.get(id);
   state.selected = op ? id : null;
@@ -195,13 +265,23 @@ function renderGraph() {
 function showTooltip(event, op) { tooltip.hidden = false; tooltip.innerHTML = `<strong>${op.apiName}</strong><br>${categories[op.category].label} / ${op.repo}`; moveTooltip(event); }
 function moveTooltip(event) { const host = graphSvg.getBoundingClientRect(); tooltip.style.left = `${event.clientX - host.left + 14}px`; tooltip.style.top = `${event.clientY - host.top + 14}px`; }
 function hideTooltip() { tooltip.hidden = true; }
-function fact(label, value) { return `<div class="operator-fact"><span>${label}</span><strong>${value}</strong></div>`; }
-function chips(items) { return `<span class="operator-chip-wrap">${items.map((item) => `<span class="operator-badge">${item}</span>`).join('')}</span>`; }
 
-function deterministicLabel(value) {
-  if (value === 'Yes') return '是';
-  if (value === 'No') return '否';
-  return '条件支持';
+
+function buildModelForOperator(op) {
+  const model = buildInspectorModel({
+    op,
+    category: categories[op.category],
+    profile: profileFor(op),
+    incoming: links.filter(([, target]) => target === op.id).length,
+    outgoing: links.filter(([source]) => source === op.id).length,
+  });
+  return {
+    ...model,
+    summary: {
+      ...model.summary,
+      categoryColor: categories[op.category].color,
+    },
+  };
 }
 
 function renderInspector() {
@@ -211,16 +291,14 @@ function renderInspector() {
     : '未选择';
 
   if (!op) {
-    inspector.innerHTML = `<section class="inspector-section"><div class="operator-inspector-title"><h2>未选择算子</h2><p class="operator-description">点击图谱节点，或通过搜索定位算子，即可查看计算公式、参数、平台、框架、API 映射、算子原型、Golden 数据及确定性支持情况。</p></div></section><section class="inspector-section"><div class="inspector-soft-card"><p class="operator-soft-note">此本地演示使用模拟的 CANN 算子数据。界面采用 PTO ide-frame；后续可将图谱数据替换为 FastAPI /api/graph 的响应。</p></div></section>`;
+    inspector.innerHTML = renderEmptyInspector();
     return;
   }
 
-  const profile = profileFor(op);
-  const incoming = links.filter(([, target]) => target === op.id).length;
-  const outgoing = links.filter(([source]) => source === op.id).length;
-  const deterministicClass = profile.deterministic === 'Yes' ? 'is-success' : 'is-warning';
-
-  inspector.innerHTML = `<section class="inspector-section"><div class="operator-inspector-title"><h2>${op.apiName}</h2><div class="operator-badge-row"><span class="operator-badge">${categories[op.category].label}</span><span class="operator-badge">${profile.computeType}</span><span class="operator-badge is-success">${op.formulas.length} 个公式</span><span class="operator-badge is-warning">${incoming} 入 / ${outgoing} 出</span></div><p class="operator-description">${op.description}</p></div></section><section class="inspector-section"><div class="inspector-section-head"><span class="inspector-section-title">算子概览</span><span class="inspector-section-kicker">元数据</span></div><div class="operator-fact-grid">${fact('算子名称', op.apiName)}${fact('计算类型', profile.computeType)}${fact('功能描述', op.description)}${fact('支持平台', chips(profile.platforms))}${fact('支持框架', chips(profile.frameworks))}${fact('是否支持确定性', `<span class="operator-badge ${deterministicClass}">${deterministicLabel(profile.deterministic)}</span>`)}${fact('支持数据类型', chips(profile.dtypes))}</div></section><section class="inspector-section"><div class="inspector-section-head"><span class="inspector-section-title">计算公式</span><span class="inspector-section-kicker">${op.formulas.length} 个公式</span></div><div class="inspector-soft-card"><code>${op.formulas[0]}</code></div></section><section class="inspector-section"><div class="inspector-section-head"><span class="inspector-section-title">关联 API 与算子原型</span><span class="inspector-section-kicker">API / Prototype</span></div><div class="operator-api-list">${profile.api.map((api) => `<span class="operator-badge">${api}</span>`).join('')}</div><div class="inspector-soft-card operator-code-card"><code>${profile.prototype}</code></div></section><section class="inspector-section"><div class="inspector-section-head"><span class="inspector-section-title">参数</span><span class="inspector-section-kicker">${op.params.length} 个字段</span></div><div class="operator-param-list">${op.params.map(([name, type, desc]) => `<div class="operator-param-row"><strong>${name}</strong><code>${type}</code><span>${desc}</span></div>`).join('')}</div></section><section class="inspector-section"><div class="inspector-section-head"><span class="inspector-section-title">Golden 数据</span><span class="inspector-section-kicker">校验基准</span></div><div class="operator-fact-grid">${fact('Golden 路径', `<code>${profile.golden}</code>`)}${fact('校验口径', 'shape / dtype / absolute error / relative error')}${fact('源码路径', `<code>${op.repo}</code>`)}</div></section>`;
+  inspector.innerHTML = renderInspectorView(
+    buildModelForOperator(op),
+    state.inspectorTab,
+  );
 }
 
 function renderEdgeTable() {
@@ -232,6 +310,8 @@ function renderEdgeTable() {
 function render() {
   renderCategories();
   renderGraph();
+  renderMatrixView();
+  updateCenterHeader();
   renderInspector();
   renderEdgeTable();
   requestAnimationFrame(() => {
@@ -253,7 +333,7 @@ function setupPanZoom() {
 function setupFrameCursor() { const frame = document.querySelector('.operator-frame'); frame.addEventListener('pointermove', (event) => { const rect = frame.getBoundingClientRect(); frame.style.setProperty('--ide-cursor-x', `${event.clientX - rect.left}px`); frame.style.setProperty('--ide-cursor-y', `${event.clientY - rect.top}px`); frame.style.setProperty('--ide-cursor-alpha', '0.13'); frame.style.setProperty('--ide-dot-opacity', '0.28'); }); frame.addEventListener('pointerleave', () => { frame.style.setProperty('--ide-cursor-alpha', '0'); frame.style.setProperty('--ide-dot-opacity', '0'); }); }
 
 searchInput.addEventListener('input', (event) => { state.query = event.target.value; if (state.query.trim()) state.activeCategory = null; const first = visibleOperators()[0]; state.selected = first ? first.id : null; render(); requestAnimationFrame(fitGraph); });
-document.querySelector('#fit-graph').addEventListener('click', fitGraph);
+fitGraphButton.addEventListener('click', fitGraph);
 document.querySelector('#toggle-inspector').addEventListener('click', (event) => { const pane = document.querySelector('#operator-inspector-pane'); const hidden = !pane.hidden; pane.hidden = hidden; pane.setAttribute('aria-hidden', String(hidden)); event.currentTarget.classList.toggle('is-selected', !hidden); event.currentTarget.setAttribute('aria-pressed', String(!hidden)); });
 window.addEventListener('resize', fitGraph);
 setupPanZoom(); setupFrameCursor(); render(); requestAnimationFrame(fitGraph);
