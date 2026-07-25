@@ -32,5 +32,6 @@ test('keeps technical identifiers in English', () => {
 
   assert.match(data, /aclnnAdd/);
   assert.match(data, /l0op_call/);
-  assert.match(html, /operator-graph\.svg/);
+  assert.match(html, /operator-matrix\.js/);
+  assert.match(html, /data-center-view="graph"/);
 });

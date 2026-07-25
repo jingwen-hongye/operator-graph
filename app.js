@@ -4,7 +4,10 @@ const buildInspectorModel = window.OperatorInspectorData.buildInspectorModel;
 const renderInspectorView = window.OperatorInspectorView.renderInspector;
 const renderEmptyInspector = window.OperatorInspectorView.renderEmptyInspector;
 const bindInspectorTabs = window.OperatorInspectorView.bindInspectorTabs;
-const operatorTree = buildTree(categories, operators);
+const buildMatrixModel = window.OperatorMatrixView.buildMatrixModel;
+const renderMatrix = window.OperatorMatrixView.renderMatrix;
+const renderMatrixEmpty = window.OperatorMatrixView.renderMatrixEmpty;
+const bindMatrixSelection = window.OperatorMatrixView.bindMatrixSelection;const operatorTree = buildTree(categories, operators);
 
 const operatorProfiles = {
   add: { computeType: '逐元素算术', platforms: ['Ascend 310P', 'Ascend 910B', 'Atlas A2'], frameworks: ['aclnn', 'MindSpore', 'PyTorch NPU'], api: ['aclnnAdd', 'aclrtMemcpyAsync'], prototype: 'aclnnStatus aclnnAdd(aclnnTensor* x1, aclnnTensor* x2, aclScalar* alpha, aclnnTensor* y)', golden: 'golden/add_fp16_broadcast.npy', deterministic: 'Yes', dtypes: ['float16', 'float32', 'int32', 'int64'] },
@@ -29,11 +32,17 @@ const state = {
   selected: null,
   query: '',
   inspectorTab: 'definition',
+  centerView: 'graph',
   transform: { x: 0, y: 0, k: 1 },
 };
 const byId = new Map(operators.map((op) => [op.id, op]));
 const graphSvg = document.querySelector('#operator-graph');
-const viewport = document.querySelector('#graph-viewport');
+const graphPanel = document.querySelector('#operator-graph-panel');
+const matrixPanel = document.querySelector('#operator-matrix-panel');
+const matrixRoot = document.querySelector('#operator-matrix');
+const centerViewTitle = document.querySelector('#center-view-title');
+const graphReadout = document.querySelector('#graph-readout');
+const fitGraphButton = document.querySelector('#fit-graph');const viewport = document.querySelector('#graph-viewport');
 const linkLayer = document.querySelector('#graph-links');
 const nodeLayer = document.querySelector('#graph-nodes');
 const tooltip = document.querySelector('#operator-tooltip');
@@ -54,6 +63,10 @@ bindInspectorTabs(inspector, (tab) => {
   requestAnimationFrame(inspectorScrollIndicator.update);
 });
 
+document.querySelectorAll('[data-center-view]').forEach((tab) => {
+  tab.addEventListener('click', () => setCenterView(tab.dataset.centerView));
+});
+
 function visibleOperators() {
   const query = state.query.trim().toLowerCase();
   return operators.filter((op) => (
@@ -63,8 +76,47 @@ function visibleOperators() {
   ));
 }
 function visibleLinks(visibleIds) { return links.filter(([source, target]) => visibleIds.has(source) && visibleIds.has(target)); }
-function applyTransform() { viewport.setAttribute('transform', `translate(${state.transform.x} ${state.transform.y}) scale(${state.transform.k})`); document.querySelector('#graph-readout').textContent = `缩放 ${(state.transform.k * 100).toFixed(0)}%`; }
-function fitGraph() { const box = graphSvg.getBoundingClientRect(); state.transform = { x: box.width / 2, y: box.height / 2, k: Math.min(box.width / 1160, box.height / 860) }; applyTransform(); }
+function updateCenterHeader() {
+  const matrixActive = state.centerView === 'matrix';
+  centerViewTitle.textContent = matrixActive ? '支持矩阵' : '算子图谱';
+  graphReadout.textContent = matrixActive
+    ? 'Atlas A2 / Ascend A3 / Ascend A5'
+    : `缩放 ${(state.transform.k * 100).toFixed(0)}%`;
+  fitGraphButton.disabled = matrixActive;
+}
+
+function renderMatrixView() {
+  matrixRoot.innerHTML = renderMatrixEmpty();
+}
+
+function setCenterView(view) {
+  state.centerView = view === 'matrix' ? 'matrix' : 'graph';
+  document.querySelectorAll('[data-center-view]').forEach((tab) => {
+    const selected = tab.dataset.centerView === state.centerView;
+    tab.classList.toggle('is-selected', selected);
+    tab.setAttribute('aria-selected', String(selected));
+  });
+  graphPanel.hidden = state.centerView !== 'graph';
+  matrixPanel.hidden = state.centerView !== 'matrix';
+  updateCenterHeader();
+  if (state.centerView === 'matrix') renderMatrixView();
+}
+
+function applyTransform() {
+  viewport.setAttribute('transform', `translate(${state.transform.x} ${state.transform.y}) scale(${state.transform.k})`);
+  if (state.centerView === 'graph') updateCenterHeader();
+}
+
+function fitGraph() {
+  if (state.centerView !== 'graph') return;
+  const box = graphSvg.getBoundingClientRect();
+  state.transform = {
+    x: box.width / 2,
+    y: box.height / 2,
+    k: Math.min(box.width / 1160, box.height / 860),
+  };
+  applyTransform();
+}
 function selectOperator(id) {
   const op = byId.get(id);
   state.selected = op ? id : null;
@@ -243,6 +295,7 @@ function renderEdgeTable() {
 function render() {
   renderCategories();
   renderGraph();
+  updateCenterHeader();
   renderInspector();
   renderEdgeTable();
   requestAnimationFrame(() => {
@@ -264,7 +317,7 @@ function setupPanZoom() {
 function setupFrameCursor() { const frame = document.querySelector('.operator-frame'); frame.addEventListener('pointermove', (event) => { const rect = frame.getBoundingClientRect(); frame.style.setProperty('--ide-cursor-x', `${event.clientX - rect.left}px`); frame.style.setProperty('--ide-cursor-y', `${event.clientY - rect.top}px`); frame.style.setProperty('--ide-cursor-alpha', '0.13'); frame.style.setProperty('--ide-dot-opacity', '0.28'); }); frame.addEventListener('pointerleave', () => { frame.style.setProperty('--ide-cursor-alpha', '0'); frame.style.setProperty('--ide-dot-opacity', '0'); }); }
 
 searchInput.addEventListener('input', (event) => { state.query = event.target.value; if (state.query.trim()) state.activeCategory = null; const first = visibleOperators()[0]; state.selected = first ? first.id : null; render(); requestAnimationFrame(fitGraph); });
-document.querySelector('#fit-graph').addEventListener('click', fitGraph);
+fitGraphButton.addEventListener('click', fitGraph);
 document.querySelector('#toggle-inspector').addEventListener('click', (event) => { const pane = document.querySelector('#operator-inspector-pane'); const hidden = !pane.hidden; pane.hidden = hidden; pane.setAttribute('aria-hidden', String(hidden)); event.currentTarget.classList.toggle('is-selected', !hidden); event.currentTarget.setAttribute('aria-pressed', String(!hidden)); });
 window.addEventListener('resize', fitGraph);
 setupPanZoom(); setupFrameCursor(); render(); requestAnimationFrame(fitGraph);

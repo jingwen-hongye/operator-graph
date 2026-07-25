@@ -127,23 +127,34 @@
 
               <main class="pto-ide-frame__pane" data-ide-pane="editor-preview">
                 <div class="pto-ide-frame__tabstrip">
-                  <div class="tab-control" aria-label="图谱标签">
-                    <button class="tab-control-item is-selected" type="button">operator-graph.svg</button>
-                    <button class="tab-control-item" type="button">dependency-map.json</button>
+                  <div class="tab-control operator-center-tabs" role="tablist" aria-label="中间视图">
+                    <button id="operator-graph-tab" class="tab-control-item is-selected" type="button"
+                      role="tab" data-center-view="graph" aria-selected="true"
+                      aria-controls="operator-graph-panel">算子图谱</button>
+                    <button id="operator-matrix-tab" class="tab-control-item" type="button"
+                      role="tab" data-center-view="matrix" aria-selected="false"
+                      aria-controls="operator-matrix-panel">支持矩阵</button>
                   </div>
                 </div>
                 <header class="pto-ide-frame__pane-header">
-                  <span class="pto-ide-frame__pane-title">算子图谱</span>
+                  <span class="pto-ide-frame__pane-title" id="center-view-title">算子图谱</span>
                   <span class="pto-ide-frame__pane-meta" id="graph-readout">拖动画布、滚轮缩放、点击节点</span>
                 </header>
-                <div class="pto-ide-frame__pane-body operator-graph-host">
-                  <svg id="operator-graph" role="img" aria-label="CANN 算子依赖图谱">
-                    <g id="graph-viewport">
-                      <g id="graph-links"></g>
-                      <g id="graph-nodes"></g>
-                    </g>
-                  </svg>
-                  <div id="operator-tooltip" class="operator-tooltip" hidden></div>
+                <div class="pto-ide-frame__pane-body operator-center-host">
+                  <div id="operator-graph-panel" class="operator-center-view operator-graph-host"
+                    role="tabpanel" aria-labelledby="operator-graph-tab">
+                    <svg id="operator-graph" role="img" aria-label="CANN 算子依赖图谱">
+                      <g id="graph-viewport">
+                        <g id="graph-links"></g>
+                        <g id="graph-nodes"></g>
+                      </g>
+                    </svg>
+                    <div id="operator-tooltip" class="operator-tooltip" hidden></div>
+                  </div>
+                  <div id="operator-matrix-panel" class="operator-center-view operator-matrix-host"
+                    role="tabpanel" aria-labelledby="operator-matrix-tab" hidden>
+                    <div id="operator-matrix" class="operator-matrix-scroll"></div>
+                  </div>
                 </div>
               </main>
 
@@ -195,6 +206,7 @@
   <script src="./scroll-indicator.js"></script>
   <script src="./operator-inspector-data.js"></script>
   <script src="./operator-inspector.js"></script>
+  <script src="./operator-matrix.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>
