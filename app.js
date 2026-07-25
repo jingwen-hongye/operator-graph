@@ -1,5 +1,9 @@
 const { categories, operators, links } = window.OperatorDemoData;
 const { buildTree, filterTree } = window.OperatorTree;
+const buildInspectorModel = window.OperatorInspectorData.buildInspectorModel;
+const renderInspectorView = window.OperatorInspectorView.renderInspector;
+const renderEmptyInspector = window.OperatorInspectorView.renderEmptyInspector;
+const bindInspectorTabs = window.OperatorInspectorView.bindInspectorTabs;
 const operatorTree = buildTree(categories, operators);
 
 const operatorProfiles = {
@@ -24,6 +28,7 @@ const state = {
   expanded: new Set(['aclnn', 'math', 'math-list']),
   selected: null,
   query: '',
+  inspectorTab: 'definition',
   transform: { x: 0, y: 0, k: 1 },
 };
 const byId = new Map(operators.map((op) => [op.id, op]));
@@ -41,6 +46,13 @@ const edgeTableScroll = document.querySelector('.operator-edge-table-wrap');
 const explorerScrollIndicator = window.ScrollIndicator.mount(explorerScroll);
 const inspectorScrollIndicator = window.ScrollIndicator.mount(inspectorScroll);
 const edgeTableScrollIndicator = window.ScrollIndicator.mount(edgeTableScroll);
+
+bindInspectorTabs(inspector, (tab) => {
+  state.inspectorTab = tab;
+  inspector.scrollTop = 0;
+  renderInspector();
+  requestAnimationFrame(inspectorScrollIndicator.update);
+});
 
 function visibleOperators() {
   const query = state.query.trim().toLowerCase();
@@ -195,14 +207,7 @@ function renderGraph() {
 function showTooltip(event, op) { tooltip.hidden = false; tooltip.innerHTML = `<strong>${op.apiName}</strong><br>${categories[op.category].label} / ${op.repo}`; moveTooltip(event); }
 function moveTooltip(event) { const host = graphSvg.getBoundingClientRect(); tooltip.style.left = `${event.clientX - host.left + 14}px`; tooltip.style.top = `${event.clientY - host.top + 14}px`; }
 function hideTooltip() { tooltip.hidden = true; }
-function fact(label, value) { return `<div class="operator-fact"><span>${label}</span><strong>${value}</strong></div>`; }
-function chips(items) { return `<span class="operator-chip-wrap">${items.map((item) => `<span class="operator-badge">${item}</span>`).join('')}</span>`; }
 
-function deterministicLabel(value) {
-  if (value === 'Yes') return '是';
-  if (value === 'No') return '否';
-  return '条件支持';
-}
 
 function renderInspector() {
   const op = state.selected ? byId.get(state.selected) : null;
@@ -211,16 +216,22 @@ function renderInspector() {
     : '未选择';
 
   if (!op) {
-    inspector.innerHTML = `<section class="inspector-section"><div class="operator-inspector-title"><h2>未选择算子</h2><p class="operator-description">点击图谱节点，或通过搜索定位算子，即可查看计算公式、参数、平台、框架、API 映射、算子原型、Golden 数据及确定性支持情况。</p></div></section><section class="inspector-section"><div class="inspector-soft-card"><p class="operator-soft-note">此本地演示使用模拟的 CANN 算子数据。界面采用 PTO ide-frame；后续可将图谱数据替换为 FastAPI /api/graph 的响应。</p></div></section>`;
+    inspector.innerHTML = renderEmptyInspector();
     return;
   }
 
   const profile = profileFor(op);
   const incoming = links.filter(([, target]) => target === op.id).length;
   const outgoing = links.filter(([source]) => source === op.id).length;
-  const deterministicClass = profile.deterministic === 'Yes' ? 'is-success' : 'is-warning';
+  const model = buildInspectorModel({
+    op,
+    category: categories[op.category],
+    profile,
+    incoming,
+    outgoing,
+  });
 
-  inspector.innerHTML = `<section class="inspector-section"><div class="operator-inspector-title"><h2>${op.apiName}</h2><div class="operator-badge-row"><span class="operator-badge">${categories[op.category].label}</span><span class="operator-badge">${profile.computeType}</span><span class="operator-badge is-success">${op.formulas.length} 个公式</span><span class="operator-badge is-warning">${incoming} 入 / ${outgoing} 出</span></div><p class="operator-description">${op.description}</p></div></section><section class="inspector-section"><div class="inspector-section-head"><span class="inspector-section-title">算子概览</span><span class="inspector-section-kicker">元数据</span></div><div class="operator-fact-grid">${fact('算子名称', op.apiName)}${fact('计算类型', profile.computeType)}${fact('功能描述', op.description)}${fact('支持平台', chips(profile.platforms))}${fact('支持框架', chips(profile.frameworks))}${fact('是否支持确定性', `<span class="operator-badge ${deterministicClass}">${deterministicLabel(profile.deterministic)}</span>`)}${fact('支持数据类型', chips(profile.dtypes))}</div></section><section class="inspector-section"><div class="inspector-section-head"><span class="inspector-section-title">计算公式</span><span class="inspector-section-kicker">${op.formulas.length} 个公式</span></div><div class="inspector-soft-card"><code>${op.formulas[0]}</code></div></section><section class="inspector-section"><div class="inspector-section-head"><span class="inspector-section-title">关联 API 与算子原型</span><span class="inspector-section-kicker">API / Prototype</span></div><div class="operator-api-list">${profile.api.map((api) => `<span class="operator-badge">${api}</span>`).join('')}</div><div class="inspector-soft-card operator-code-card"><code>${profile.prototype}</code></div></section><section class="inspector-section"><div class="inspector-section-head"><span class="inspector-section-title">参数</span><span class="inspector-section-kicker">${op.params.length} 个字段</span></div><div class="operator-param-list">${op.params.map(([name, type, desc]) => `<div class="operator-param-row"><strong>${name}</strong><code>${type}</code><span>${desc}</span></div>`).join('')}</div></section><section class="inspector-section"><div class="inspector-section-head"><span class="inspector-section-title">Golden 数据</span><span class="inspector-section-kicker">校验基准</span></div><div class="operator-fact-grid">${fact('Golden 路径', `<code>${profile.golden}</code>`)}${fact('校验口径', 'shape / dtype / absolute error / relative error')}${fact('源码路径', `<code>${op.repo}</code>`)}</div></section>`;
+  inspector.innerHTML = renderInspectorView(model, state.inspectorTab);
 }
 
 function renderEdgeTable() {
