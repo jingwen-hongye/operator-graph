@@ -28,7 +28,7 @@
 - Modify `styles.css`: compact tabs, tables, status rows, code blocks, empty states, and responsive behavior.
 - Create `tests/operator-inspector-data.test.js`: model completeness and deterministic demo data.
 - Create `tests/operator-inspector-view.test.js`: tab markup and content rendering.
-- Modify `tests/localization.test.js`: verify the five Simplified Chinese tab labels.
+- Create `tests/operator-inspector-styles.test.js`: verify the required scoped inspector style hooks.
 
 ---
 
@@ -563,36 +563,53 @@ git commit -m "Connect inspector tabs to graph selection"
 
 **Files:**
 - Modify: `styles.css`
-- Modify: `tests/localization.test.js`
+- Create: `tests/operator-inspector-styles.test.js`
 
 **Interfaces:**
 - Consumes: renderer class names from Task 2.
 - Produces: responsive, scroll-safe tab and table presentation.
 
-- [ ] **Step 1: Add failing localization assertions**
+- [ ] **Step 1: Write the failing scoped-style contract test**
 
-Add:
+Create:
 
 ```js
-const inspectorView = fs.readFileSync(
-  path.join(__dirname, '..', 'operator-inspector.js'),
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const styles = fs.readFileSync(
+  path.join(__dirname, '..', 'styles.css'),
   'utf8',
 );
 
-['算子定义', '支持情况', '性能', '精度', 'API 学习'].forEach((label) => {
-  assert.match(inspectorView, new RegExp(label));
+test('defines scoped styles for the five-tab inspector', () => {
+  [
+    'operator-inspector-summary',
+    'operator-inspector-tabs',
+    'operator-inspector-panel',
+    'operator-detail-table',
+    'operator-support-row',
+    'operator-status-glyph',
+    'operator-learning-steps',
+    'operator-api-links',
+    'operator-demo-note',
+  ].forEach((className) => {
+    assert.match(styles, new RegExp(`\\.${className}\\b`));
+  });
 });
 ```
 
-- [ ] **Step 2: Run localization tests**
+- [ ] **Step 2: Run the style contract test and verify RED**
 
 Run:
 
 ```powershell
-node --test tests/localization.test.js
+node --test tests/operator-inspector-styles.test.js
 ```
 
-Expected: PASS after Task 2; this protects the finalized copy during styling.
+Expected: FAIL because the new scoped inspector classes are absent from `styles.css`.
 
 - [ ] **Step 3: Add scoped inspector styles**
 
@@ -636,7 +653,7 @@ Expected: all tests pass with zero failures.
 - [ ] **Step 5: Commit styles**
 
 ```powershell
-git add styles.css tests/localization.test.js
+git add styles.css tests/operator-inspector-styles.test.js
 git commit -m "Style operator inspector detail tabs"
 ```
 
