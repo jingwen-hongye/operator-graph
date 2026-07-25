@@ -6,8 +6,8 @@ const renderEmptyInspector = window.OperatorInspectorView.renderEmptyInspector;
 const bindInspectorTabs = window.OperatorInspectorView.bindInspectorTabs;
 const buildMatrixModel = window.OperatorMatrixView.buildMatrixModel;
 const renderMatrix = window.OperatorMatrixView.renderMatrix;
-const renderMatrixEmpty = window.OperatorMatrixView.renderMatrixEmpty;
-const bindMatrixSelection = window.OperatorMatrixView.bindMatrixSelection;const operatorTree = buildTree(categories, operators);
+const bindMatrixSelection = window.OperatorMatrixView.bindMatrixSelection;
+const operatorTree = buildTree(categories, operators);
 
 const operatorProfiles = {
   add: { computeType: '逐元素算术', platforms: ['Ascend 310P', 'Ascend 910B', 'Atlas A2'], frameworks: ['aclnn', 'MindSpore', 'PyTorch NPU'], api: ['aclnnAdd', 'aclrtMemcpyAsync'], prototype: 'aclnnStatus aclnnAdd(aclnnTensor* x1, aclnnTensor* x2, aclScalar* alpha, aclnnTensor* y)', golden: 'golden/add_fp16_broadcast.npy', deterministic: 'Yes', dtypes: ['float16', 'float32', 'int32', 'int64'] },
@@ -42,7 +42,8 @@ const matrixPanel = document.querySelector('#operator-matrix-panel');
 const matrixRoot = document.querySelector('#operator-matrix');
 const centerViewTitle = document.querySelector('#center-view-title');
 const graphReadout = document.querySelector('#graph-readout');
-const fitGraphButton = document.querySelector('#fit-graph');const viewport = document.querySelector('#graph-viewport');
+const fitGraphButton = document.querySelector('#fit-graph');
+const viewport = document.querySelector('#graph-viewport');
 const linkLayer = document.querySelector('#graph-links');
 const nodeLayer = document.querySelector('#graph-nodes');
 const tooltip = document.querySelector('#operator-tooltip');
@@ -67,6 +68,10 @@ document.querySelectorAll('[data-center-view]').forEach((tab) => {
   tab.addEventListener('click', () => setCenterView(tab.dataset.centerView));
 });
 
+bindMatrixSelection(matrixRoot, (operatorId) => {
+  selectOperator(operatorId);
+});
+
 function visibleOperators() {
   const query = state.query.trim().toLowerCase();
   return operators.filter((op) => (
@@ -86,7 +91,8 @@ function updateCenterHeader() {
 }
 
 function renderMatrixView() {
-  matrixRoot.innerHTML = renderMatrixEmpty();
+  const model = buildMatrixModel(visibleOperators(), buildModelForOperator);
+  matrixRoot.innerHTML = renderMatrix(model, state.selected);
 }
 
 function setCenterView(view) {
@@ -261,6 +267,23 @@ function moveTooltip(event) { const host = graphSvg.getBoundingClientRect(); too
 function hideTooltip() { tooltip.hidden = true; }
 
 
+function buildModelForOperator(op) {
+  const model = buildInspectorModel({
+    op,
+    category: categories[op.category],
+    profile: profileFor(op),
+    incoming: links.filter(([, target]) => target === op.id).length,
+    outgoing: links.filter(([source]) => source === op.id).length,
+  });
+  return {
+    ...model,
+    summary: {
+      ...model.summary,
+      categoryColor: categories[op.category].color,
+    },
+  };
+}
+
 function renderInspector() {
   const op = state.selected ? byId.get(state.selected) : null;
   document.querySelector('#selected-meta').textContent = op
@@ -272,18 +295,10 @@ function renderInspector() {
     return;
   }
 
-  const profile = profileFor(op);
-  const incoming = links.filter(([, target]) => target === op.id).length;
-  const outgoing = links.filter(([source]) => source === op.id).length;
-  const model = buildInspectorModel({
-    op,
-    category: categories[op.category],
-    profile,
-    incoming,
-    outgoing,
-  });
-
-  inspector.innerHTML = renderInspectorView(model, state.inspectorTab);
+  inspector.innerHTML = renderInspectorView(
+    buildModelForOperator(op),
+    state.inspectorTab,
+  );
 }
 
 function renderEdgeTable() {
@@ -295,6 +310,7 @@ function renderEdgeTable() {
 function render() {
   renderCategories();
   renderGraph();
+  renderMatrixView();
   updateCenterHeader();
   renderInspector();
   renderEdgeTable();

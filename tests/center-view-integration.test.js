@@ -28,3 +28,21 @@ test('defaults to graph and switches views without resetting transform', () => {
   assert.doesNotMatch(setView[1], /state\.transform\s*=/);
   assert.doesNotMatch(setView[1], /fitGraph\(/);
 });
+test('matrix consumes the shared visible operator and inspector model paths', () => {
+  assert.match(
+    app,
+    /buildMatrixModel\(visibleOperators\(\),\s*buildModelForOperator\)/,
+  );
+  assert.match(app, /function buildModelForOperator\(op\)/);
+  assert.match(app, /bindMatrixSelection\(matrixRoot,\s*\(operatorId/);
+  assert.match(app, /selectOperator\(operatorId\)/);
+});
+
+test('render updates the matrix without resetting the active center view', () => {
+  assert.match(app, /function render\(\)[\s\S]*renderMatrixView\(\)/);
+  assert.doesNotMatch(
+    app,
+    /function render\(\)[\s\S]*state\.centerView\s*=\s*'graph'/,
+  );
+  assert.match(app, /categoryColor:\s*categories\[op\.category\]\.color/);
+});
