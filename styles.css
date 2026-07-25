@@ -558,3 +558,309 @@ body {
   font: var(--type-mono);
 }
 
+
+/* Operator inspector tabs */
+.operator-inspector-sticky {
+  position: sticky;
+  z-index: var(--z-raised);
+  top: 0;
+  margin-inline: calc(0px - var(--inspector-rail-padding-x));
+  background: var(--ide-frame-pane-bg);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.operator-inspector-summary {
+  padding: var(--space-3) var(--inspector-rail-padding-x) var(--space-2);
+}
+
+.operator-inspector-summary .operator-description {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.operator-inspector-tabs {
+  display: flex;
+  width: 100%;
+  height: 36px;
+  padding-inline: var(--inspector-rail-padding-x);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.operator-inspector-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.operator-inspector-tabs .tab-control-item {
+  position: relative;
+  min-width: max-content;
+  height: 36px;
+  flex: 0 0 auto;
+  padding: 0 var(--space-3);
+  border: 0;
+  background: transparent;
+  color: var(--foreground-muted);
+  font: var(--type-label);
+  cursor: pointer;
+}
+
+.operator-inspector-tabs .tab-control-item:hover {
+  color: var(--foreground-secondary);
+  background: var(--state-hover);
+}
+
+.operator-inspector-tabs .tab-control-item.is-selected {
+  color: var(--foreground);
+}
+
+.operator-inspector-tabs .tab-control-item.is-selected::after {
+  position: absolute;
+  right: var(--space-3);
+  bottom: 0;
+  left: var(--space-3);
+  height: 2px;
+  background: var(--accent);
+  content: '';
+}
+
+.operator-inspector-tabs .tab-control-item:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--focus-ring);
+}
+
+.operator-inspector-panel {
+  min-width: 0;
+  padding-block: var(--space-2) var(--space-4);
+}
+
+.operator-detail-section {
+  min-width: 0;
+  padding-block: var(--space-3);
+}
+
+.operator-detail-section + .operator-detail-section {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.operator-detail-section h3 {
+  margin: 0 0 var(--space-2);
+  color: var(--foreground);
+  font: var(--type-label);
+}
+
+.operator-detail-section p {
+  margin: 0;
+  color: var(--foreground-secondary);
+  font: var(--type-body-sm);
+  line-height: 1.6;
+}
+
+.operator-code-block,
+.operator-api-name {
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 2px solid var(--border-strong);
+  background: color-mix(in srgb, var(--surface-2) 78%, transparent);
+}
+
+.operator-code-block + .operator-code-block {
+  margin-top: var(--space-2);
+}
+
+.operator-code-block code,
+.operator-api-name code {
+  color: var(--foreground);
+  font: var(--type-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.operator-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.operator-detail-table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+  color: var(--foreground-secondary);
+  font: var(--type-body-sm);
+}
+
+.operator-detail-table th,
+.operator-detail-table td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: left;
+  vertical-align: top;
+}
+
+.operator-detail-table th {
+  color: var(--foreground-muted);
+  font: var(--type-label);
+  white-space: nowrap;
+}
+
+.operator-detail-table code {
+  color: var(--foreground);
+  font: var(--type-mono);
+  white-space: nowrap;
+}
+
+.operator-support-list {
+  display: grid;
+}
+
+.operator-support-row {
+  padding-block: var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.operator-support-row:first-child {
+  padding-top: 0;
+}
+
+.operator-support-heading,
+.operator-support-meta,
+.operator-support-summary > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.operator-support-heading strong {
+  color: var(--foreground);
+  font: var(--type-body-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.operator-support-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font: var(--type-label);
+  white-space: nowrap;
+}
+
+.operator-support-status.is-full {
+  color: var(--success);
+}
+
+.operator-support-status.is-partial {
+  color: var(--warning);
+}
+
+.operator-support-status.is-adapting {
+  color: var(--foreground-muted);
+}
+
+.operator-status-glyph {
+  width: 12px;
+  text-align: center;
+}
+
+.operator-support-meta {
+  margin-top: var(--space-2);
+  color: var(--foreground-muted);
+  font: var(--type-label);
+}
+
+.operator-condition-list,
+.operator-learning-steps {
+  margin: var(--space-2) 0 0;
+  padding-left: 18px;
+  color: var(--foreground-secondary);
+  font: var(--type-body-sm);
+  line-height: 1.6;
+}
+
+.operator-support-summary {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.operator-support-summary > div > span:first-child {
+  color: var(--foreground-muted);
+  font: var(--type-label);
+}
+
+.operator-demo-note {
+  margin-top: var(--space-2) !important;
+  color: var(--warning) !important;
+}
+
+.operator-precision-grade {
+  display: inline-flex;
+  min-height: var(--tag-height);
+  align-items: center;
+  padding-inline: var(--tag-padding-x);
+  border-radius: var(--tag-radius);
+  background: var(--tone-green-strong);
+  color: var(--success);
+  font: var(--type-label);
+}
+
+.operator-api-links {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.operator-api-links a {
+  width: fit-content;
+  color: var(--accent);
+  font: var(--type-body-sm);
+  text-decoration: none;
+}
+
+.operator-api-links a:hover {
+  text-decoration: underline;
+}
+
+.operator-detail-empty,
+.operator-inspector-empty {
+  color: var(--foreground-secondary);
+  font: var(--type-body-sm);
+}
+
+.operator-inspector-empty {
+  padding-block: var(--space-3);
+}
+
+.operator-inspector-empty h2 {
+  margin: 0 0 var(--space-2);
+  color: var(--foreground);
+  font: var(--type-title-2);
+}
+
+.operator-inspector-empty p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+@media (max-width: 980px) {
+  .operator-inspector-summary {
+    padding-top: var(--space-2);
+  }
+
+  .operator-inspector-tabs .tab-control-item {
+    padding-inline: var(--space-2);
+  }
+
+  .operator-detail-table {
+    min-width: 480px;
+  }
+
+  .operator-support-heading,
+  .operator-support-meta,
+  .operator-support-summary > div {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

@@ -204,7 +204,7 @@
         aria-controls="operator-inspector-panel">${item.label}</button>`;
     }).join('');
 
-    return `<section class="operator-inspector-summary">
+    return `<div class="operator-inspector-sticky"><section class="operator-inspector-summary">
       <div class="operator-inspector-title">
         <h2>${escapeHtml(summary.name)}</h2>
         <div class="operator-badge-row">
@@ -218,7 +218,7 @@
     </section>
     <div class="operator-inspector-tabs tab-control" role="tablist" aria-label="算子详情">
       ${tabs}
-    </div>
+    </div></div>
     <div class="operator-inspector-panel"
       id="operator-inspector-panel"
       role="tabpanel"
